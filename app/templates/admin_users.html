@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>用户管理</h1>
+        <div>
+            <a href="{{ url_for('admin.dashboard') }}" class="btn btn-secondary">返回面板</a>
+            <a href="{{ url_for('admin.admin_logout') }}" class="btn btn-danger">退出管理员模式</a>
+        </div>
+    </div>
+    
+    <div class="card">
+        <div class="card-header">
+            <h5>用户列表</h5>
+        </div>
+        <div class="card-body">
+            {% if users %}
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>用户名</th>
+                            <th>邮箱</th>
+                            <th>邮箱验证状态</th>
+                            <th>注册时间</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for user in users %}
+                        <tr>
+                            <td>{{ user.id }}</td>
+                            <td>
+                                <img src="{{ user.get_avatar(32) }}" alt="{{ user.username }}的头像" 
+                                     class="rounded-circle me-2" style="width: 32px; height: 32px;">
+                                {{ user.username }}
+                            </td>
+                            <td>{{ user.email }}</td>
+                            <td>
+                                {% if user.confirmed %}
+                                <span class="badge bg-success">已验证</span>
+                                {% else %}
+                                <span class="badge bg-warning text-dark">未验证</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {# 使用Jinja2的方式检查属性是否存在 #}
+                                {% if user.created_at is defined %}
+                                    {{ user.created_at.strftime('%Y-%m-%d %H:%M') }}
+                                {% else %}
+                                    未知
+                                {% endif %}
+                            </td>
+                            <td>
+                                <a href="{{ url_for('admin.file_management', user_id=user.id) }}" class="btn btn-sm btn-info">查看文件</a>
+                                {% if user.id != current_user.id %}
+                                <button type="button" class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#deleteUserModal{{ user.id }}">删除用户</button>
+                                
+                                <!-- 删除用户确认模态框 -->
+                                <div class="modal fade" id="deleteUserModal{{ user.id }}" tabindex="-1" aria-hidden="true">
+                                    <div class="modal-dialog">
+                                        <div class="modal-content">
+                                            <div class="modal-header">
+                                                <h5 class="modal-title">确认删除用户</h5>
+                                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                            </div>
+                                            <div class="modal-body">
+                                                确定要删除用户 "{{ user.username }}" 吗？此操作将删除该用户及其所有文件和数据，且不可恢复。
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                                                <form method="POST" action="{{ url_for('admin.delete_user', user_id=user.id) }}">
+                                                    <button type="submit" class="btn btn-danger">删除</button>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% else %}
+                                <button class="btn btn-sm btn-secondary" disabled>当前账号</button>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="alert alert-info">
+                没有注册用户
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1>确认销毁账号</h1>
+    
+    <div class="alert alert-danger mt-3">
+        <h4 class="alert-heading">警告！</h4>
+        <p>您正在尝试销毁您的账号。此操作将：</p>
+        <ul>
+            <li>永久删除您的用户账号</li>
+            <li>删除您上传的所有文件</li>
+            <li>删除您创建的所有文件夹</li>
+            <li>删除您的头像和所有个人数据</li>
+        </ul>
+        <p class="mb-0">此操作不可撤销，请谨慎操作！</p>
+    </div>
+    
+    <div class="card mt-4">
+        <div class="card-header">
+            <h5>确认身份</h5>
+        </div>
+        <div class="card-body">
+            <form method="POST" action="{{ url_for('users.delete_account') }}">
+                <div class="mb-3">
+                    <label for="password" class="form-label">请输入您的密码以确认</label>
+                    <input type="password" class="form-control" id="password" name="password" required>
+                </div>
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-danger">确认销毁账号</button>
+                    <a href="{{ url_for('users.profile') }}" class="btn btn-secondary">取消</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

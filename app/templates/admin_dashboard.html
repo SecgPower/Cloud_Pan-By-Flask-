@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>管理员面板</h1>
+        <a href="{{ url_for('admin.admin_logout') }}" class="btn btn-danger">退出管理员模式</a>
+    </div>
+    
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title">总用户数</h5>
+                    <p class="card-text display-4">{{ user_count }}</p>
+                    <a href="{{ url_for('admin.user_management') }}" class="btn btn-primary">管理用户</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title">总文件数</h5>
+                    <p class="card-text display-4">{{ file_count }}</p>
+                    <a href="{{ url_for('admin.file_management') }}" class="btn btn-primary">管理文件</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title">总文件夹数</h5>
+                    <p class="card-text display-4">{{ folder_count }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title">总存储量</h5>
+                    <p class="card-text display-4">{{ total_storage }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="card">
+        <div class="card-header">
+            <h5>管理功能</h5>
+        </div>
+        <div class="card-body">
+            <div class="list-group">
+                <a href="{{ url_for('admin.user_management') }}" class="list-group-item list-group-item-action">
+                    <i class="bi bi-people me-2"></i>用户管理
+                </a>
+                <a href="{{ url_for('admin.file_management') }}" class="list-group-item list-group-item-action">
+                    <i class="bi bi-file-earmark me-2"></i>文件管理
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

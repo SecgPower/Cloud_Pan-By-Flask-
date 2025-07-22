@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="hero">
+    <h1>Welcome to HuCloudPan</h1>
+    {% if current_user.is_authenticated %}
+    <h3>Hello,&nbsp;{{ current_user.username }}</h3>
+    {% else %}
+    <h4>Please&nbsp;<a href="{{ url_for('auth.login') }}">Login</a>&nbsp;or&nbsp;<a href="{{ url_for('auth.signup') }}">Signup</a></h4>
+    {% endif %}
+</section>
+{% endblock %}

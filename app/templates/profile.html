@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1>个人资料</h1>
+    
+    <div class="row mt-4">
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5>头像</h5>
+                </div>
+                <div class="card-body text-center">
+                    <img src="{{ current_user.get_avatar(200) }}" alt="{{ current_user.username }}的头像" 
+                         class="rounded-circle mb-3" style="width: 200px; height: 200px; object-fit: cover;">
+                    
+                    <form method="POST" action="{{ url_for('users.upload_avatar') }}" enctype="multipart/form-data">
+                        <div class="mb-3">
+                            <input class="form-control" type="file" id="avatar" name="avatar" accept="image/*" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary">更新头像</button>
+                    </form>
+                    <div class="form-text mt-2">
+                        支持的格式: JPG, JPEG, PNG, GIF<br>
+                        最大大小: 2 MB
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5>账号信息</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table">
+                        <tbody>
+                            <tr>
+                                <th style="width: 30%">用户名</th>
+                                <td>{{ current_user.username }}</td>
+                            </tr>
+                            <tr>
+                                <th>邮箱</th>
+                                <td>
+                                    {{ current_user.email }}
+                                    {% if not current_user.confirmed %}
+                                    <span class="badge bg-warning text-dark ms-2">未验证</span>
+                                    <a href="{{ url_for('auth.resend_confirmation') }}" class="btn btn-sm btn-outline-primary ms-2">重新发送验证邮件</a>
+                                    {% else %}
+                                    <span class="badge bg-success ms-2">已验证</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>注册时间</th>
+                                <td>
+                                    {# 使用Jinja2的方式检查属性是否存在 #}
+                                    {% if current_user.created_at is defined %}
+                                        {{ current_user.created_at.strftime('%Y-%m-%d %H:%M') }}
+                                    {% else %}
+                                        未知
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <div class="card mt-4 border-danger">
+                <div class="card-header bg-danger text-white">
+                    <h5>账号销毁</h5>
+                </div>
+                <div class="card-body">
+                    <p class="text-danger">警告：此操作将永久删除您的账号及所有数据（包括上传的文件、创建的文件夹等），且不可恢复！</p>
+                    <a href="{{ url_for('users.delete_account_confirm') }}" class="btn btn-danger">销毁我的账号</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

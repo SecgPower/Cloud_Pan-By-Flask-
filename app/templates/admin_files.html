@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>文件管理</h1>
+        <div>
+            <a href="{{ url_for('admin.user_management') }}" class="btn btn-secondary">用户管理</a>
+            <a href="{{ url_for('admin.dashboard') }}" class="btn btn-secondary">返回面板</a>
+            <a href="{{ url_for('admin.admin_logout') }}" class="btn btn-danger">退出管理员模式</a>
+        </div>
+    </div>
+    
+    <!-- 用户筛选 -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5>筛选文件</h5>
+        </div>
+        <div class="card-body">
+            <form method="GET" action="{{ url_for('admin.file_management') }}">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="user_id" class="form-label">按用户筛选</label>
+                            <select class="form-select" id="user_id" name="user_id" onchange="this.form.submit()">
+                                <option value="">所有用户</option>
+                                {% for user in users %}
+                                <option value="{{ user.id }}" {% if current_user_filter and user.id == current_user_filter.id %}selected{% endif %}>
+                                    {{ user.username }} ({{ user.email }})
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                {% if current_user_filter %}
+                <div class="alert alert-info">
+                    当前显示: <strong>{{ current_user_filter.username }}</strong> 的文件
+                    <a href="{{ url_for('admin.file_management') }}" class="btn btn-sm btn-outline-secondary ms-2">清除筛选</a>
+                </div>
+                {% endif %}
+            </form>
+        </div>
+    </div>
+    
+    <!-- 文件列表 -->
+    <div class="card">
+        <div class="card-header">
+            <h5>
+                文件列表
+                {% if current_user_filter %}
+                (共 {{ files|length }} 个文件)
+                {% else %}
+                (共 {{ files|length }} 个文件)
+                {% endif %}
+            </h5>
+        </div>
+        <div class="card-body">
+            {% if files %}
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>文件名</th>
+                            <th>所属用户</th>
+                            <th>大小</th>
+                            <th>上传时间</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for file in files %}
+                        <tr>
+                            <td>{{ file.id }}</td>
+                            <td>
+                                <i class="bi bi-file-earmark me-2"></i>
+                                {{ file.filename }}
+                            </td>
+                            <td>
+                                <img src="{{ file.owner.get_avatar(24) }}" alt="{{ file.owner.username }}的头像" 
+                                     class="rounded-circle me-2" style="width: 24px; height: 24px;">
+                                {{ file.owner.username }}
+                            </td>
+                            <td>{{ file.display_size }}</td>
+                            <td>{{ file.upload_time.strftime('%Y-%m-%d %H:%M') }}</td>
+                            <td>
+                                <a href="{{ url_for('files.download_file', file_id=file.id) }}" class="btn btn-sm btn-success">下载</a>
+                                <button type="button" class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#deleteFileModal{{ file.id }}">删除</button>
+                                
+                                <!-- 删除文件确认模态框 -->
+                                <div class="modal fade" id="deleteFileModal{{ file.id }}" tabindex="-1" aria-hidden="true">
+                                    <div class="modal-dialog">
+                                        <div class="modal-content">
+                                            <div class="modal-header">
+                                                <h5 class="modal-title">确认删除文件</h5>
+                                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                            </div>
+                                            <div class="modal-body">
+                                                确定要删除文件 "{{ file.filename }}" 吗？此操作不可恢复。
+                                                <br>
+                                                <small class="text-muted">所属用户: {{ file.owner.username }}</small>
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                                                <form method="POST" action="{{ url_for('admin.delete_file', file_id=file.id) }}">
+                                                    <button type="submit" class="btn btn-danger">删除</button>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="alert alert-info">
+                没有找到文件
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
