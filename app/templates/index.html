@@ -1,12 +1,54 @@
 {% extends "base.html" %}
 
+{% block title %}首页{% endblock %}
+
 {% block content %}
-<section class="hero">
+<div class="container mt-4">
     <h1>Welcome to HuCloudPan</h1>
+    
     {% if current_user.is_authenticated %}
-    <h3>Hello,&nbsp;{{ current_user.username }}</h3>
+    <div class="card mt-4">
+        <div class="card-header">
+            <h5>最近文件</h5>
+        </div>
+        <div class="card-body">
+            {% if recent_files %}
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>文件名</th>
+                            <th>大小</th>
+                            <th>上传时间</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for file in recent_files %}
+                        <tr>
+                            <td>
+                                <i class="bi bi-file-earmark"></i>
+                                {{ file.filename }}
+                            </td>
+                            <td>{{ file.display_size }}</td>
+                            <td>{{ file.upload_time.strftime('%Y-%m-%d %H:%M') }}</td>
+                            <td>
+                                <a href="{{ url_for('files.download_file', file_id=file.id) }}" class="btn btn-sm btn-success">下载</a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="text-muted">暂无文件</p>
+            {% endif %}
+        </div>
+    </div>
     {% else %}
-    <h4>Please&nbsp;<a href="{{ url_for('auth.login') }}">Login</a>&nbsp;or&nbsp;<a href="{{ url_for('auth.signup') }}">Signup</a></h4>
+    <div class="alert alert-info mt-4">
+        请<a href="{{ url_for('auth.login') }}">登录</a>或<a href="{{ url_for('auth.signup') }}">注册</a>以使用文件存储服务
+    </div>
     {% endif %}
-</section>
+</div>
 {% endblock %}

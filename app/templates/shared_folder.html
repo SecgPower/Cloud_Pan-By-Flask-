@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+
+{% block title %}共享文件夹: {{ folder.name }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="alert alert-info">
+        <p>共享文件夹: <strong>{{ folder.name }}</strong></p>
+        <p>有效期至: {{ (share.created_time + timedelta(hours=share.expires_in)).strftime('%Y-%m-%d %H:%M') }}</p>
+    </div>
+
+    {% if subfolders or files %}
+    <div class="card mt-4">
+        <div class="card-header">
+            <h5>文件夹内容</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>名称</th>
+                            <th>类型</th>
+                            <th>修改时间</th>
+                            <th>大小</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- 显示子文件夹 -->
+                        {% for subfolder in subfolders %}
+                        <tr>
+                            <td>
+                                <i class="bi bi-folder"></i>
+                                {{ subfolder.name }}
+                            </td>
+                            <td>文件夹</td>
+                            <td>{{ subfolder.created_time.strftime('%Y-%m-%d %H:%M') }}</td>
+                            <td>-</td>
+                            <td>
+                                <span class="text-muted">子文件夹未共享</span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+
+                        <!-- 显示文件 -->
+                        {% for file in files %}
+                        <tr>
+                            <td>
+                                <i class="bi bi-file-earmark"></i>
+                                {{ file.filename }}
+                            </td>
+                            <td>文件</td>
+                            <td>{{ file.upload_time.strftime('%Y-%m-%d %H:%M') }}</td>
+                            <td>{{ file.display_size }}</td>
+                            <td>
+                                <a href="{{ url_for('files.download_file', file_id=file.id, share_code=share.share_code) }}" 
+                                   class="btn btn-sm btn-success">下载</a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="alert alert-info mt-4">
+        该文件夹中没有内容
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

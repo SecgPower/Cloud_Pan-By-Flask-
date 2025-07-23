@@ -6,6 +6,8 @@ from app.config import BaseConfig as Config
 import os
 from werkzeug.utils import secure_filename
 import shutil
+from app.models import FileShare, FolderShare
+from datetime import timedelta, datetime
 
 # 创建文件管理蓝图
 files = Blueprint('files', __name__)
@@ -41,6 +43,11 @@ def get_contents(folder_id=None):
     # 转换文件大小显示
     for file in files:
         file.display_size = convert_size(file.filesize)
+
+    # 获取当前文件夹下的文件，按文件名排序
+    files = File.query.filter_by(folder_id=folder_id, user_id=current_user.id)\
+                .order_by(File.filename.asc())\
+                .all()
     
     return current_folder, subfolders, files
 
@@ -61,12 +68,12 @@ def file_list(folder_id=None):
     while current:
         breadcrumbs.insert(0, current)
         current = current.parent
-    
     return render_template('file_list.html', 
                          current_folder=current_folder,
                          folders=subfolders,
                          files=files,
-                         breadcrumbs=breadcrumbs)
+                         breadcrumbs=breadcrumbs,
+                         timedelta=timedelta)
 
 # 创建文件夹
 @files.route('/files/create-folder', methods=['POST'])
@@ -125,6 +132,18 @@ def upload_file():
         flash('未选择文件', 'danger')
         return redirect(url_for('files.file_list', folder_id=folder_id))
     
+    # 检查文件大小是否超出用户配额
+    if file and allowed_file(file.filename):
+        # 获取文件大小
+        file.seek(0, os.SEEK_END)
+        file_size = file.tell()
+        file.seek(0)  # 重置文件指针
+        
+        if not current_user.can_upload(file_size):
+            remaining = current_user.get_remaining_storage()
+            flash(f'存储空间不足！剩余空间: {convert_size(remaining)}', 'danger')
+            return redirect(url_for('files.file_list', folder_id=folder_id))
+    
     # 检查文件是否合法
     if file and allowed_file(file.filename):
         # 确保文件名安全(已移除)
@@ -164,6 +183,10 @@ def upload_file():
             folder_id=folder_id
         )
         db.session.add(new_file)
+        db.session.commit()
+
+        # 保存文件后更新用户存储使用量
+        current_user.total_storage_used += filesize
         db.session.commit()
         
         flash(f'文件 "{filename}" 上传成功', 'success')
@@ -259,19 +282,29 @@ def rename_folder(folder_id):
     
     return redirect(url_for('files.file_list', folder_id=folder.parent_id))
 
-# 文件下载
 @files.route('/files/download/<int:file_id>')
-@login_required
-def download_file(file_id):
-    # 获取文件记录
+def download_file(file_id):  # 移除 login_required 装饰器，允许匿名访问共享文件
     file = File.query.get_or_404(file_id)
     
-    # 验证文件所有权
-    if file.user_id != current_user.id:
-        flash('没有访问权限', 'danger')
-        return redirect(url_for('files.file_list', folder_id=file.folder_id))
+    # 权限验证：要么是文件所有者，要么有有效的分享码
+    is_owner = current_user.is_authenticated and file.user_id == current_user.id
+    share_code = request.args.get('share_code')
+    is_valid_share = False
     
-    # 发送文件供下载
+    if share_code:
+        # 检查分享是否有效
+        share = FolderShare.query.filter_by(
+            share_code=share_code,
+            is_active=True,
+            folder_id=file.folder_id
+        ).first()
+        is_valid_share = share is not None and not share.is_expired()
+    
+    if not is_owner and not is_valid_share:
+        flash('没有访问权限或分享已过期', 'danger')
+        return redirect(url_for('main.index'))
+    
+    # 发送文件下载
     directory = os.path.dirname(file.filepath)
     filename = os.path.basename(file.filepath)
     return send_from_directory(directory, filename, as_attachment=True)
@@ -338,3 +371,131 @@ def delete_folder(folder_id):
     
     flash(f'文件夹 "{folder_name}" 已删除', 'success')
     return redirect(url_for('files.file_list', folder_id=parent_id))
+
+# 创建文件分享
+@files.route('/files/share/<int:file_id>', methods=['POST'])
+@login_required
+def create_share(file_id):
+    file = File.query.get_or_404(file_id)
+    if file.user_id != current_user.id:
+        flash('没有权限分享此文件', 'danger')
+        return redirect(url_for('files.file_list', folder_id=file.folder_id))
+    
+    # 获取过期时间（默认24小时）
+    expires_in = int(request.form.get('expires_in', 24))
+    
+    # 创建分享记录
+    share = FileShare(
+        file_id=file.id,
+        expires_in=expires_in
+    )
+    db.session.add(share)
+    db.session.commit()
+    
+    # 生成分享链接
+    share_link = url_for('files.access_shared', share_code=share.share_code, _external=True)
+    flash(f'文件分享成功！分享链接：{share_link}', 'success')
+    return redirect(url_for('files.file_list', folder_id=file.folder_id))
+
+# 访问分享的文件
+@files.route('/files/shared/<string:share_code>')
+def access_shared(share_code):
+    share = FileShare.query.filter_by(share_code=share_code, is_active=True).first()
+    if not share or share.is_expired():
+        flash('分享链接无效或已过期', 'danger')
+        return redirect(url_for('main.index'))
+    
+    return render_template('shared_file.html', share=share, timedelta=timedelta)
+
+# 下载分享的文件
+@files.route('/files/shared/download/<string:share_code>')
+def download_shared(share_code):
+    share = FileShare.query.filter_by(share_code=share_code, is_active=True).first()
+    if not share or share.is_expired():
+        flash('分享链接无效或已过期', 'danger')
+        return redirect(url_for('main.index'))
+    
+    file = share.file
+    directory = os.path.dirname(file.filepath)
+    filename = os.path.basename(file.filepath)
+    return send_from_directory(directory, filename, as_attachment=True)
+
+# 取消文件分享
+@files.route('/files/unshare/<int:share_id>', methods=['POST'])
+@login_required
+def cancel_share(share_id):
+    share = FileShare.query.get_or_404(share_id)
+    if share.file.user_id != current_user.id:
+        flash('没有权限取消此分享', 'danger')
+        return redirect(url_for('files.file_list'))
+    
+    share.is_active = False
+    db.session.commit()
+    flash('文件分享已取消', 'success')
+    return redirect(url_for('files.file_list', folder_id=share.file.folder_id))
+
+# 生成文件夹分享链接
+@files.route('/files/share-folder/<int:folder_id>', methods=['POST'])
+@login_required
+def generate_folder_share(folder_id):
+    # 验证文件夹所有权
+    folder = Folder.query.filter_by(id=folder_id, user_id=current_user.id).first()
+    if not folder:
+        flash('文件夹不存在或无权限', 'danger')
+        return redirect(url_for('files.file_list', folder_id=folder.parent_id if folder else None))
+    
+    # 获取用户设置的过期时间（小时）
+    expires_in = int(request.form.get('expires_in', 24))
+    
+    # 创建分享记录
+    share = FolderShare(
+        folder_id=folder.id,
+        expires_in=expires_in
+    )
+    db.session.add(share)
+    db.session.commit()
+    
+    # 生成完整分享链接
+    share_link = url_for('files.access_shared_folder', share_code=share.share_code, _external=True)
+    flash(f'文件夹分享成功！分享链接：<br>{share_link}', 'success')
+    return redirect(url_for('files.file_list', folder_id=folder.parent_id))
+
+# 访问共享文件夹
+@files.route('/files/shared-folder/<string:share_code>')
+def access_shared_folder(share_code):
+    # 验证分享有效性
+    share = FolderShare.query.filter_by(share_code=share_code, is_active=True).first()
+    if not share or share.is_expired():
+        flash('分享链接无效或已过期', 'danger')
+        return redirect(url_for('main.index'))
+    
+    # 获取文件夹内容
+    folder = share.folder
+    subfolders = Folder.query.filter_by(parent_id=folder.id, user_id=folder.user_id).order_by(Folder.name).all()
+    files = File.query.filter_by(folder_id=folder.id, user_id=folder.user_id).order_by(File.filename).all()
+    
+    # 格式化文件大小
+    for file in files:
+        file.display_size = convert_size(file.filesize)
+    
+    return render_template('shared_folder.html', 
+                         share=share,
+                         folder=folder,
+                         subfolders=subfolders,
+                         files=files,
+                         timedelta=timedelta)
+
+# 取消文件夹分享
+@files.route('/files/unshare-folder/<int:share_id>', methods=['POST'])
+@login_required
+def unshare_folder(share_id):
+    share = FolderShare.query.get_or_404(share_id)
+    # 验证所有权
+    if share.folder.user_id != current_user.id:
+        flash('无权限执行此操作', 'danger')
+        return redirect(url_for('files.file_list'))
+    
+    share.is_active = False
+    db.session.commit()
+    flash('文件夹分享已取消', 'success')
+    return redirect(url_for('files.file_list', folder_id=share.folder.parent_id))

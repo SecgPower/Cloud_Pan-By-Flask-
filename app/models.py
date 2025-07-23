@@ -1,5 +1,5 @@
 from app import db
-from datetime import datetime
+from datetime import datetime, timedelta
 import uuid
 import os
 
@@ -27,6 +27,16 @@ class User(UserMixin, db.Model):
 
     admin_authenticated = db.Column(db.Boolean, default=False)  # 标记是否通过管理员验证
     admin_auth_time = db.Column(db.DateTime)  # 记录验证时间
+
+    total_storage_used = db.Column(db.BigInteger, default=0)  # 新增字段
+    
+    def get_remaining_storage(self):
+        """获取剩余存储空间（4GB = 4 * 1024^3 bytes）"""
+        return 4 * 1024 * 1024 * 1024 - self.total_storage_used
+    
+    def can_upload(self, file_size):
+        """检查是否可以上传指定大小的文件"""
+        return self.get_remaining_storage() >= file_size
     
     def set_password(self, password):
         from werkzeug.security import generate_password_hash
@@ -113,3 +123,34 @@ class Post(db.Model):
     
     def __repr__(self):
         return f'<Post {self.title}>'
+    
+class FileShare(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    share_code = db.Column(db.String(36), unique=True, nullable=False, default=lambda: str(uuid.uuid4()))
+    file_id = db.Column(db.Integer, db.ForeignKey('file.id'), nullable=False)
+    created_time = db.Column(db.DateTime, default=datetime.utcnow)
+    expires_in = db.Column(db.Integer, default=24)  # 过期时间（小时）
+    is_active = db.Column(db.Boolean, default=True)
+    
+    # 关联文件
+    file = db.relationship('File', backref=db.backref('shares', lazy=True))
+    
+    def is_expired(self):
+        """检查分享是否过期"""
+        return datetime.utcnow() > self.created_time + timedelta(hours=self.expires_in)
+    
+class FolderShare(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    share_code = db.Column(db.String(36), unique=True, nullable=False, 
+                          default=lambda: str(uuid.uuid4()))  # 唯一分享码
+    folder_id = db.Column(db.Integer, db.ForeignKey('folder.id'), nullable=False)  # 关联文件夹
+    created_time = db.Column(db.DateTime, default=datetime.utcnow)  # 创建时间
+    expires_in = db.Column(db.Integer, nullable=False, default=24)  # 过期小时数，默认24小时
+    is_active = db.Column(db.Boolean, default=True)  # 是否有效
+
+    # 关联到文件夹
+    folder = db.relationship('Folder', backref=db.backref('shares', lazy=True))
+
+    def is_expired(self):
+        """检查分享是否已过期"""
+        return datetime.utcnow() > self.created_time + timedelta(hours=self.expires_in)

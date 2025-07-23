@@ -1,11 +1,28 @@
-from flask_login import login_required, current_user
 from flask import Blueprint, render_template, request, redirect, url_for
+from flask_login import login_required, current_user
+from app.models import File
 
 main = Blueprint('main', __name__)
 
 @main.route('/')
 def index():
-    return render_template('index.html', title='首页')
+    recent_files = []
+    if current_user.is_authenticated:
+        # 获取最近5个文件，按上传时间排序
+        recent_files = File.query.filter_by(user_id=current_user.id)\
+                        .order_by(File.upload_time.desc())\
+                        .limit(5)\
+                        .all()
+        # 转换文件大小显示
+        for file in recent_files:
+            if file.filesize < 1024:
+                file.display_size = f"{file.filesize} B"
+            elif file.filesize < 1024 * 1024:
+                file.display_size = f"{file.filesize / 1024:.2f} KB"
+            else:
+                file.display_size = f"{file.filesize / (1024 * 1024):.2f} MB"
+    
+    return render_template('index.html', recent_files=recent_files)
 
 @main.route('/about')
 def about():

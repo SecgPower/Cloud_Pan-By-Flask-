@@ -62,4 +62,44 @@
         </div>
     </div>
 </div>
+<!-- 在现有卡片后面添加系统信息卡片 -->
+<div class="row mt-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h5>系统状态监测</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3">
+                        <div class="card text-center">
+                            <div class="card-body">
+                                <h5 class="card-title">CPU 使用率</h5>
+                                <p class="card-text display-4">{{ system_info.cpu_usage }}%</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card text-center">
+                            <div class="card-body">
+                                <h5 class="card-title">内存使用</h5>
+                                <p class="card-text display-4">{{ system_info.mem_used }} / {{ system_info.mem_total }}</p>
+                                <p class="text-muted">{{ system_info.mem_percent }}%</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card text-center">
+                            <div class="card-body">
+                                <h5 class="card-title">磁盘使用</h5>
+                                <p class="card-text display-4">{{ system_info.disk_used }} / {{ system_info.disk_total }}</p>
+                                <p class="text-muted">{{ system_info.disk_percent }}%</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}

@@ -1,5 +1,5 @@
 from app import create_app, db
-from app.models import User, File  # 导入新添加的File模型
+from app.models import User, File, FileShare  # 导入新添加的File模型
 import os
 
 # 创建应用实例

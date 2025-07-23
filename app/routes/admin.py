@@ -6,7 +6,7 @@ from app.config import BaseConfig as Config
 import os
 import hashlib
 from datetime import datetime, timedelta
-import shutil
+import shutil, psutil, platform
 
 admin = Blueprint('admin', __name__)
 
@@ -159,13 +159,43 @@ def dashboard():
             return f"{size_bytes / (1024 * 1024 * 1024):.2f} GB"
     
     total_storage_display = convert_size(total_storage)
+
+    # 系统信息监测
+    def get_system_info():
+        # CPU使用率
+        cpu_usage = psutil.cpu_percent(interval=1)
+        
+        # 内存信息
+        mem = psutil.virtual_memory()
+        mem_total = mem.total
+        mem_used = mem.used
+        mem_percent = mem.percent
+        
+        # 磁盘信息
+        disk = psutil.disk_usage('/')
+        disk_total = disk.total
+        disk_used = disk.used
+        disk_percent = disk.percent
+        
+        return {
+            'cpu_usage': cpu_usage,
+            'mem_total': convert_size(mem_total),
+            'mem_used': convert_size(mem_used),
+            'mem_percent': mem_percent,
+            'disk_total': convert_size(disk_total),
+            'disk_used': convert_size(disk_used),
+            'disk_percent': disk_percent
+        }
+        
+    system_info = get_system_info()
     
     return render_template('admin_dashboard.html', 
                          title='管理员面板',
                          user_count=user_count,
                          file_count=file_count,
                          folder_count=folder_count,
-                         total_storage=total_storage_display)
+                         total_storage=total_storage_display,
+                         system_info=system_info)  # 传递系统信息
 
 # 用户管理页面
 @admin.route('/admin/users')
@@ -205,10 +235,14 @@ def file_management():
     # 可以按用户筛选文件
     user_id = request.args.get('user_id', type=int)
     if user_id:
-        files = File.query.filter_by(user_id=user_id).order_by(File.upload_time.desc()).all()
+        # 按文件名排序
+        files = File.query.filter_by(user_id=user_id)\
+                .order_by(File.filename.asc())\
+                .all()
         current_user_filter = User.query.get(user_id)
     else:
-        files = File.query.order_by(File.upload_time.desc()).all()
+        # 按文件名排序
+        files = File.query.order_by(File.filename.asc()).all()
         current_user_filter = None
     
     # 获取所有用户用于筛选

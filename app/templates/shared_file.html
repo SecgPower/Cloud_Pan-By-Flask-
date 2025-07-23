@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+
+{% block title %}共享文件{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card">
+        <div class="card-header">
+            <h5>共享文件</h5>
+        </div>
+        <div class="card-body text-center">
+            <i class="bi bi-file-earmark display-1 mb-3"></i>
+            <h3>{{ share.file.filename }}</h3>
+            <p class="text-muted">大小: {{ share.file.display_size }}</p>
+            <p class="text-muted">过期时间: {{ (share.created_time + timedelta(hours=share.expires_in)).strftime('%Y-%m-%d %H:%M') }}</p>
+            
+            <a href="{{ url_for('files.download_shared', share_code=share.share_code) }}" class="btn btn-success btn-lg mt-3">
+                <i class="bi bi-download me-2"></i>下载文件
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}
